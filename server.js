@@ -12,9 +12,9 @@ app.use(cors());
 app.use(express.json()); // Parses incoming JSON requests
 
 // Import Routes
-const userRoutes = require("./Routes/userRoutes");
+const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/auth");
-const teamRoutes = require("./Routes/team");
+const teamRoutes = require("./routes/team");
 const projectRoutes = require("./routes/projects");
 const leaveRoutes = require("./routes/leaveApplication");
 
