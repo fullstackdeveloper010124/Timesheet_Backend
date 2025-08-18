@@ -141,7 +141,7 @@ router.post("/forgot-password", async (req, res) => {
         },
       });
 
-      const resetLink = `http://localhost:3000/reset-password/${token}`;
+      const resetLink = `https://timesheetsbackend.myadminbuddy.com/reset-password/${token}`;
 
       await transporter.sendMail({
         to: email,
