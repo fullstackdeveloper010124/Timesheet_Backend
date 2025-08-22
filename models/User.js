@@ -9,4 +9,5 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true, select: false }
 });
 
-module.exports = mongoose.model("User", UserSchema);
+// module.exports = mongoose.model("User", UserSchema);
+module.exports = mongoose.model("User", UserSchema, "teammembers");
