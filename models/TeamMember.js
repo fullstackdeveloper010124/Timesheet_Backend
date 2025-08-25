@@ -3,8 +3,8 @@ const mongoose = require("mongoose");
 const teamMemberSchema = new mongoose.Schema({
   employeeId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
-  project: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true }, // Replaced role
-  email: { type: String, required: true },
+  project: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true },
+  email: { type: String, required: true, unique: true },
   phone: String,
   address: String,
   bankName: String,
@@ -15,10 +15,7 @@ const teamMemberSchema = new mongoose.Schema({
   accountType: String,
   hoursThisWeek: { type: Number, default: 0 },
   status: { type: String, default: "Active" },
-  role: { type: String, enum: ["Employee", "Manager",  "Admin"], default: "Employee", required: true }, // new field
-});
+  role: { type: String, enum: ["Employee", "Manager", "Admin"], default: "Employee" }
+}, { timestamps: true });
 
 module.exports = mongoose.model("TeamMember", teamMemberSchema);
-
-
-

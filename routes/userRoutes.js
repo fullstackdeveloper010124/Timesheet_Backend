@@ -1,25 +1,52 @@
 const express = require("express");
+const bcrypt = require("bcryptjs");
+const TeamMember = require("../models/TeamMembers");
+
 const router = express.Router();
-const User = require("../models/User");
 
-// GET all users
-router.get("/", async (req, res) => {
+// =====================
+// ✅ Signup Route (TeamMember)
+// =====================
+router.post("/signup", async (req, res) => {
   try {
-    const users = await User.find(); // Fetch all user documents
-    res.status(200).json(users);
-  } catch (err) {
-    res.status(500).json({ error: "Server error while fetching users" });
-  }
-});
+    const { name, phone, email, password, confirmPassword, project, role } = req.body;
 
-// POST a new user
-router.post("/", async (req, res) => {
-  try {
-    const newUser = new User(req.body); // Create new User instance from request body
-    const savedUser = await newUser.save(); // Save to DB
-    res.status(201).json(savedUser);
-  } catch (err) {
-    res.status(400).json({ error: "Error while saving user", details: err.message });
+    if (!name || !phone || !email || !password || !confirmPassword || !project) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    // Check if already exists
+    const existingUser = await TeamMember.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate employeeId (auto)
+    const employeeId = "EMP" + Date.now();
+
+    const newMember = new TeamMember({
+      employeeId,
+      name,
+      phone,
+      email,
+      project,
+      role: role || "Employee",
+      password: hashedPassword // 👈 will store password inside TeamMembers
+    });
+
+    await newMember.save();
+
+    res.status(201).json({ message: "Signup successful", user: newMember });
+  } catch (error) {
+    console.error("Signup Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
