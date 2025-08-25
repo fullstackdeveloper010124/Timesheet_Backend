@@ -14,7 +14,11 @@ const teamMemberSchema = new mongoose.Schema({
   account: String,
   accountType: String,
   hoursThisWeek: { type: Number, default: 0 },
-  status: { type: String, default: "Active" }
+  status: { type: String, default: "Active" },
+  role: { type: String, enum: ["Employee", "Manager",  "Admin"], default: "Employee", required: true }, // new field
 });
 
 module.exports = mongoose.model("TeamMember", teamMemberSchema);
+
+
+

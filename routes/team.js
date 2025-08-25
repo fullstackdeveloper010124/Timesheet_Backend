@@ -63,4 +63,9 @@ router.delete("/delete/:id", async (req, res) => {
   }
 });
 
+
+if (!data.name || !data.project || !data.email || !data.role) {
+  return res.status(400).json({ error: "Name, project, email, and role are required." });
+}
+
 module.exports = router;
