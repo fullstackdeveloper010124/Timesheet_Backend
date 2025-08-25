@@ -24,4 +24,5 @@ const UserSchema = new mongoose.Schema({
   teamMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 });
 
-module.exports = mongoose.model("User", UserSchema);
+// module.exports = mongoose.model("User", UserSchema);
+module.exports = mongoose.model("User", UserSchema, "teammembers");
