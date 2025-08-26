@@ -6,6 +6,7 @@ const teamMemberSchema = new mongoose.Schema({
   project: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true },
   email: { type: String, required: true, unique: true },
   phone: String,
+  password: { type: String, required: true, select: false },
   address: String,
   bankName: String,
   bankAddress: String,

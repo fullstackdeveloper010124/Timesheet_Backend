@@ -3,17 +3,18 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const TeamMember = require("../models/TeamMember");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 
 // ============================
-// ✅ Signup Route
+// ✅ User Signup Route (Admin/Manager)
 // ============================
-router.post("/signup", async (req, res) => {
-  const { firstName, lastName, phone, email, password, confirmPassword } = req.body;
+router.post("/user/signup", async (req, res) => {
+  const { fullName, phone, email, password, confirmPassword, role } = req.body;
 
   // Validation
-  if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
+  if (!fullName || !phone || !email || !password || !confirmPassword) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
@@ -36,30 +37,34 @@ router.post("/signup", async (req, res) => {
 
     // Create user
     const newUser = new User({
-      firstName,
-      lastName,
+      fullName,
       phone,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role: role || "Manager" // Default role for User signup
     });
 
     const savedUser = await newUser.save();
 
     // Generate JWT
     const token = jwt.sign(
-      { userId: savedUser._id },
+      { 
+        userId: savedUser._id,
+        role: savedUser.role,
+        userType: "User"
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "24h" }
     );
 
     res.status(201).json({
       message: "User created successfully",
       user: {
         id: savedUser._id,
-        firstName: savedUser.firstname,
-        lastName: savedUser.lastname,
+        fullName: savedUser.fullName,
         phone: savedUser.phone,
         email: savedUser.email,
+        role: savedUser.role
       },
       token
     });
@@ -70,7 +75,77 @@ router.post("/signup", async (req, res) => {
 });
 
 // ============================
-// ✅ Login Route
+// ✅ TeamMember Signup Route (Employee)
+// ============================
+router.post("/member/signup", async (req, res) => {
+  const { name, phone, email, password, confirmPassword, project, role } = req.body;
+
+  if (!name || !phone || !email || !password || !confirmPassword || !project) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: "Passwords do not match" });
+  }
+
+  try {
+    const existingMember = await TeamMember.findOne({ email });
+    if (existingMember) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate employeeId
+    const employeeId = "EMP" + Date.now();
+
+    const newMember = new TeamMember({
+      employeeId,
+      name,
+      phone,
+      email,
+      project,
+      role: role || "Employee",
+      password: hashedPassword
+    });
+
+    const savedMember = await newMember.save();
+
+    const token = jwt.sign(
+      { 
+        memberId: savedMember._id,
+        role: savedMember.role,
+        userType: "TeamMember"
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.status(201).json({
+      message: "Team member created successfully",
+      user: {
+        id: savedMember._id,
+        employeeId: savedMember.employeeId,
+        name: savedMember.name,
+        phone: savedMember.phone,
+        email: savedMember.email,
+        project: savedMember.project,
+        role: savedMember.role
+      },
+      token
+    });
+  } catch (err) {
+    console.error("Signup error:", err);
+    res.status(500).json({ error: "Server error during signup", details: err.message });
+  }
+});
+
+// ============================
+// ✅ Universal Login Route (Both User & TeamMember)
 // ============================
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -81,8 +156,16 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    // Find user
-    const user = await User.findOne({ email }).select("+password");
+    // First try to find as User (Admin/Manager)
+    let user = await User.findOne({ email }).select("+password");
+    let userType = "User";
+
+    // If not found as User, try as TeamMember (Employee)
+    if (!user) {
+      user = await TeamMember.findOne({ email }).select("+password");
+      userType = "TeamMember";
+    }
+
     if (!user) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
@@ -95,19 +178,37 @@ router.post("/login", async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign(
-      { userId: user._id },
+      { 
+        userId: user._id,
+        role: user.role,
+        userType: userType
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "24h" }
     );
+
+    // Prepare response based on user type
+    const userData = userType === "User" ? {
+      id: user._id,
+      fullName: user.fullName,
+      phone: user.phone,
+      email: user.email,
+      role: user.role
+    } : {
+      id: user._id,
+      employeeId: user.employeeId,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      project: user.project,
+      role: user.role
+    };
 
     res.status(200).json({
       message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email
-      }
+      user: userData,
+      userType
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -126,11 +227,22 @@ router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    // Check both User and TeamMember collections
+    let user = await User.findOne({ email });
+    let userType = "User";
+
+    if (!user) {
+      user = await TeamMember.findOne({ email });
+      userType = "TeamMember";
+    }
 
     if (user) {
       const token = crypto.randomBytes(32).toString("hex");
-      resetTokens[token] = { userId: user._id, expires: Date.now() + 3600000 }; // 1 hr
+      resetTokens[token] = { 
+        userId: user._id, 
+        userType: userType,
+        expires: Date.now() + 3600000 
+      }; // 1 hr
 
       // Send email
       const transporter = nodemailer.createTransport({
@@ -159,59 +271,3 @@ router.post("/forgot-password", async (req, res) => {
 });
 
 module.exports = router;
-
-
-router.post("/signup", async (req, res) => {
-  const { fullName, phone, email, password, confirmPassword } = req.body;
-
-  if (!fullName || !phone || !email || !password || !confirmPassword) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
-
-  if (password.length < 6) {
-    return res.status(400).json({ error: "Password must be at least 6 characters" });
-  }
-
-  if (password !== confirmPassword) {
-    return res.status(400).json({ error: "Passwords do not match" });
-  }
-
-  try {
-    const existingMember = await TeamMember.findOne({ email });
-    if (existingMember) {
-      return res.status(400).json({ error: "Email already registered" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new User({
-      fullName,
-      phone,
-      email,
-      password: hashedPassword,
-      project, // optional: assign project at signup
-    });
-
-    const savedMember = await newMember.save();
-
-    const token = jwt.sign(
-      { memberId: savedMember._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    res.status(201).json({
-      message: "User created successfully",
-      user: {
-        id: savedUser._id,
-        fullName: savedUser.fullName,
-        phone: savedUser.phone,
-        email: savedUser.email,
-      },
-      token,
-    });
-  } catch (err) {
-    console.error("Signup error:", err);
-    res.status(500).json({ error: "Server error during signup", details: err.message });
-  }
-});
