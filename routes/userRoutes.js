@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const TeamMember = require("../models/TeamMembers");
+const TeamMember = require("../models/TeamMember");
 
 const router = express.Router();
 
