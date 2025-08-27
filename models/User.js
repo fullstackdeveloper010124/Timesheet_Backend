@@ -19,6 +19,7 @@ const UserSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, select: false },
+  role: { type: String, enum: ["Admin", "Manager"], default: "Manager" },
 
   // Optional teamMembers (if you keep it)
   teamMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
