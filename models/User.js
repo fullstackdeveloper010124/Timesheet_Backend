@@ -22,8 +22,8 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ["Admin", "Manager"], default: "Manager" },
 
   // Optional teamMembers (if you keep it)
-  teamMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+  teamMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: "TeamMember" }]
 });
 
-// module.exports = mongoose.model("User", UserSchema);
-module.exports = mongoose.model("User", UserSchema, "teammembers");
+// Use the default collection name `users`
+module.exports = mongoose.model("User", UserSchema);
