@@ -68,12 +68,42 @@ router.post("/add", async (req, res) => {
 });
 
 // =======================
-// Get all members
+// Get all members (including signup users)
 // =======================
 router.get("/all", async (req, res) => {
   try {
-    const members = await TeamMember.find().populate("project", "name");
-    res.json(members);
+    // Get team members from TeamMember collection
+    const teamMembers = await TeamMember.find().populate("project", "name");
+    
+    // Get users from User collection (signup data)
+    const User = require("../models/User");
+    const signupUsers = await User.find();
+    
+    // Convert signup users to team member format
+    const convertedUsers = signupUsers.map(user => ({
+      _id: user._id,
+      employeeId: user.role === 'Admin' ? 'ADM001' : user.role === 'Manager' ? 'MGR001' : 'EMP001',
+      name: user.fullName || user.name,
+      project: 'N/A',
+      email: user.email,
+      phone: user.phone || '',
+      address: '',
+      bankName: '',
+      bankAddress: '',
+      accountHolder: '',
+      accountHolderAddress: '',
+      account: '',
+      accountType: '',
+      hoursThisWeek: 0,
+      status: 'Active',
+      role: user.role,
+      isUser: true // Flag to identify signup users
+    }));
+    
+    // Combine both collections
+    const allMembers = [...convertedUsers, ...teamMembers];
+    
+    res.json(allMembers);
   } catch (err) {
     res.status(500).json({ error: "Server error", details: err.message });
   }
