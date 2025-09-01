@@ -17,6 +17,8 @@ const authRoutes = require("./routes/auth");
 const teamRoutes = require("./routes/team");
 const projectRoutes = require("./routes/projects");
 const leaveRoutes = require("./routes/leaveApplication");
+const timeEntryRoutes = require("./routes/timeEntry");
+const taskRoutes = require("./routes/tasks");
 
 
 // MongoDB Connection 
@@ -38,6 +40,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/team", teamRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/leave", leaveRoutes);
+app.use("/api/time-entries", timeEntryRoutes);
+app.use("/api/tasks", taskRoutes);
 
 
 
