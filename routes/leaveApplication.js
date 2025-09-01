@@ -5,115 +5,158 @@ const LeaveApplication = require("../models/LeaveApplication");
 // POST - Create new leave application
 router.post("/", async (req, res) => {
   try {
-    const newLeave = new LeaveApplication(req.body);
+    // Validate required fields
+    const requiredFields = ['employeeName', 'supervisorName', 'department', 'leaveDate', 'leaveTime', 'leaveType', 'duration'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        error: "Missing required fields", 
+        missingFields,
+        message: `Please provide: ${missingFields.join(', ')}`
+      });
+    }
+
+    // Validate that at least one reason is provided
+    if ((!req.body.selectedReasons || req.body.selectedReasons.length === 0) && !req.body.otherReason) {
+      return res.status(400).json({ 
+        error: "Validation failed", 
+        message: "Please provide at least one reason for leave"
+      });
+    }
+
+    // Create new leave application
+    const newLeave = new LeaveApplication({
+      ...req.body,
+      status: 'pending',
+      submittedAt: new Date()
+    });
+
     const savedLeave = await newLeave.save();
-    res.status(201).json({ message: "Leave request submitted", data: savedLeave });
+    
+    console.log("Leave application submitted successfully:", savedLeave);
+    
+    res.status(201).json({ 
+      success: true,
+      message: "Leave request submitted successfully", 
+      data: savedLeave,
+      applicationId: savedLeave._id
+    });
   } catch (error) {
     console.error("Leave application error:", error);
-    res.status(500).json({ error: "Failed to submit leave request", details: error.message });
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        error: "Validation failed", 
+        message: error.message,
+        details: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to submit leave request", 
+      message: "Internal server error. Please try again later.",
+      details: error.message 
+    });
   }
 });
 
-// GET - Fetch all leave applications
+// GET - Optional: Fetch all leave applications
 router.get("/", async (req, res) => {
   try {
-    const leaves = await LeaveApplication.find();
-    res.status(200).json(leaves);
+    const { status, department, employeeName } = req.query;
+    
+    let filter = {};
+    
+    if (status) filter.status = status;
+    if (department) filter.department = { $regex: department, $options: 'i' };
+    if (employeeName) filter.employeeName = { $regex: employeeName, $options: 'i' };
+    
+    const leaves = await LeaveApplication.find(filter)
+      .sort({ submittedAt: -1 })
+      .limit(100);
+    
+    res.status(200).json({
+      success: true,
+      count: leaves.length,
+      data: leaves
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch leave applications" });
+    console.error("Fetch leave applications error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch leave applications",
+      message: "Internal server error. Please try again later."
+    });
   }
 });
 
 // GET - Fetch leave application by ID
 router.get("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const leave = await LeaveApplication.findById(id);
+    const leave = await LeaveApplication.findById(req.params.id);
     
     if (!leave) {
-      return res.status(404).json({ error: "Leave application not found" });
+      return res.status(404).json({ 
+        error: "Not found", 
+        message: "Leave application not found" 
+      });
     }
     
-    res.status(200).json(leave);
+    res.status(200).json({
+      success: true,
+      data: leave
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch leave application" });
+    console.error("Fetch leave application error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch leave application",
+      message: "Internal server error. Please try again later."
+    });
   }
 });
 
-// GET - Fetch leave applications by employee name
-router.get("/employee/:employeeName", async (req, res) => {
-  try {
-    const { employeeName } = req.params;
-    const leaves = await LeaveApplication.find({ employeeName: { $regex: employeeName, $options: 'i' } });
-    res.status(200).json(leaves);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch leave applications" });
-  }
-});
-
-// PUT - Update leave application status
+// PUT - Update leave application status (for HR/Admin)
 router.put("/:id/status", async (req, res) => {
   try {
-    const { id } = req.params;
     const { status, comments, reviewedBy } = req.body;
     
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ 
+        error: "Invalid status", 
+        message: "Status must be 'approved' or 'rejected'" 
+      });
+    }
+    
     const updatedLeave = await LeaveApplication.findByIdAndUpdate(
-      id,
-      { 
-        status, 
-        comments, 
-        reviewedBy, 
-        reviewedAt: new Date() 
+      req.params.id,
+      {
+        status,
+        comments,
+        reviewedBy,
+        reviewedAt: new Date()
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
     
     if (!updatedLeave) {
-      return res.status(404).json({ error: "Leave application not found" });
+      return res.status(404).json({ 
+        error: "Not found", 
+        message: "Leave application not found" 
+      });
     }
     
-    res.status(200).json({ message: "Status updated successfully", data: updatedLeave });
+    res.status(200).json({
+      success: true,
+      message: `Leave application ${status} successfully`,
+      data: updatedLeave
+    });
   } catch (error) {
-    console.error("Update status error:", error);
-    res.status(500).json({ error: "Failed to update status", details: error.message });
-  }
-});
-
-// DELETE - Delete leave application
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deletedLeave = await LeaveApplication.findByIdAndDelete(id);
-    
-    if (!deletedLeave) {
-      return res.status(404).json({ error: "Leave application not found" });
-    }
-    
-    res.status(200).json({ message: "Leave application deleted successfully" });
-  } catch (error) {
-    console.error("Delete error:", error);
-    res.status(500).json({ error: "Failed to delete leave application", details: error.message });
+    res.status(500).json({ error: "Failed to fetch leave applications" });
   }
 });
 
 
 
 module.exports = router;
-
-// const express = require("express");
-// const router = express.Router();
-// const LeaveApplication = require("../models/LeaveApplication");
-
-// router.post("/", async (req, res) => {
-//   try {
-//     const newLeave = new LeaveApplication(req.body);
-//     const savedLeave = await newLeave.save();
-//     res.status(201).json({ message: "Leave request submitted", data: savedLeave });
-//   } catch (error) {
-//     console.error("Leave application error:", error);
-//     res.status(500).json({ error: "Failed to submit leave request", details: error.message });
-//   }
-// });
-
-// module.exports = router;
 

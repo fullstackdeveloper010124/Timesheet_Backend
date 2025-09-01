@@ -6,11 +6,31 @@ const TeamMember = require("../models/TeamMember");
 
 // Helper: Auto-generate employeeId like EMP001, EMP002
 async function generateEmployeeId() {
-  const last = await TeamMember.findOne().sort({ createdAt: -1 });
-  if (!last || !last.employeeId) return "EMP001";
+  try {
+    // Find the highest existing employee ID
+    const lastMember = await TeamMember.findOne().sort({ employeeId: -1 });
+    
+    if (!lastMember || !lastMember.employeeId) {
+      return "EMP001";
+    }
 
-  const lastNum = parseInt(last.employeeId.replace("EMP", "")) || 0;
-  return "EMP" + String(lastNum + 1).padStart(3, "0");
+    // Extract the number from the last employee ID
+    const idMatch = lastMember.employeeId.match(/EMP(\d+)/);
+    if (!idMatch) {
+      // If the format is unexpected, start from 1
+      return "EMP001";
+    }
+
+    const lastNum = parseInt(idMatch[1]);
+    const nextNum = lastNum + 1;
+    
+    // Format with leading zeros (EMP001, EMP002, etc.)
+    return "EMP" + String(nextNum).padStart(3, '0');
+  } catch (error) {
+    console.error("Error generating employee ID:", error);
+    // Fallback to timestamp-based ID if there's an error
+    return "EMP" + Date.now().toString().slice(-3);
+  }
 }
 
 // =======================
