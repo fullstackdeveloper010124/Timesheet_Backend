@@ -16,7 +16,8 @@ const teamMemberSchema = new mongoose.Schema({
   accountType: String,
   charges: { type: Number, default: 0 },
   status: { type: String, default: "Active" },
-  role: { type: String, enum: ["Employee", "Manager", "Admin"], default: "Employee" }
+  role: { type: String, enum: ["Employee", "Manager", "Admin"], default: "Employee" },
+  shift: { type: String, enum: ["Hourly", "Daily", "Weekly", "Monthly"], default: "Monthly" }
 }, { timestamps: true });
 
 module.exports = mongoose.model("TeamMember", teamMemberSchema);
