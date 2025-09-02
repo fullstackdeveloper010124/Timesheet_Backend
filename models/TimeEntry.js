@@ -90,7 +90,7 @@ timeEntrySchema.statics.getUserTotalHours = async function(userId, startDate, en
   const result = await this.aggregate([
     {
       $match: {
-        userId: mongoose.Types.ObjectId(userId),
+        userId: new mongoose.Types.ObjectId(userId),
         createdAt: {
           $gte: new Date(startDate),
           $lte: new Date(endDate)

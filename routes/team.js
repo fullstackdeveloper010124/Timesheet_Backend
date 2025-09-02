@@ -94,7 +94,7 @@ router.get("/all", async (req, res) => {
       accountHolderAddress: '',
       account: '',
       accountType: '',
-      hoursThisWeek: 0,
+      charges: 0,
       status: 'Active',
       role: user.role,
       isUser: true // Flag to identify signup users

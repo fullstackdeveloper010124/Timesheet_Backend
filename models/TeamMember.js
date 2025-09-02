@@ -14,7 +14,7 @@ const teamMemberSchema = new mongoose.Schema({
   accountHolderAddress: String,
   account: String,
   accountType: String,
-  hoursThisWeek: { type: Number, default: 0 },
+  charges: { type: Number, default: 0 },
   status: { type: String, default: "Active" },
   role: { type: String, enum: ["Employee", "Manager", "Admin"], default: "Employee" }
 }, { timestamps: true });
