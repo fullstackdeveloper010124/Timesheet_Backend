@@ -3,8 +3,13 @@ const mongoose = require('mongoose');
 const timeEntrySchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    required: true,
+    refPath: 'userModel'
+  },
+  userModel: {
+    type: String,
+    required: true,
+    enum: ['User', 'TeamMember']   // ✅ এখন ঠিক হলো
   },
   project: {
     type: mongoose.Schema.Types.ObjectId,
@@ -63,12 +68,11 @@ const timeEntrySchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Calculate duration before saving
+// Calculate duration + amount before save
 timeEntrySchema.pre('save', function(next) {
   if (this.startTime && this.endTime) {
-    this.duration = Math.round((this.endTime - this.startTime) / (1000 * 60)); // Duration in minutes
+    this.duration = Math.round((this.endTime - this.startTime) / (1000 * 60)); // minutes
     
-    // Calculate total amount if hourly rate is set
     if (this.hourlyRate > 0 && this.billable) {
       this.totalAmount = (this.duration / 60) * this.hourlyRate;
     }
@@ -76,16 +80,19 @@ timeEntrySchema.pre('save', function(next) {
   next();
 });
 
-// Instance method to format duration as HH:MM:SS
+// Index for performance
+timeEntrySchema.index({ userId: 1, createdAt: -1 });
+timeEntrySchema.index({ project: 1, task: 1 });
+
+// Instance method: formatted duration
 timeEntrySchema.methods.getFormattedDuration = function() {
   const hours = Math.floor(this.duration / 60);
   const minutes = this.duration % 60;
-  const seconds = 0; // We're tracking in minutes, so seconds will be 0
-  
+  const seconds = 0;
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-// Static method to get user's total hours for a date range
+// Static method: total hours
 timeEntrySchema.statics.getUserTotalHours = async function(userId, startDate, endDate) {
   const result = await this.aggregate([
     {

@@ -80,6 +80,7 @@ router.post('/', async (req, res) => {
       description,
       project,
       assignedTo,
+      assignedModel,   // ✅ এটাও নিতে হবে
       priority,
       estimatedHours,
       dueDate,
@@ -114,6 +115,7 @@ router.post('/', async (req, res) => {
       description,
       project,
       assignedTo,
+      assignedModel,   // ✅ এটা লাগবেই
       priority: priority || 'medium',
       estimatedHours: estimatedHours || 0,
       dueDate: dueDate ? new Date(dueDate) : null,

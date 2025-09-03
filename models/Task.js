@@ -17,7 +17,12 @@ const taskSchema = new mongoose.Schema({
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    refPath: 'assignedModel'
+  },
+  assignedModel: {
+    type: String,
+    required: true,
+    enum: ['User', 'TeamMember']
   },
   priority: {
     type: String,
@@ -66,7 +71,7 @@ taskSchema.virtual('completionPercentage').get(function() {
 taskSchema.statics.getByProject = function(projectId, status = null) {
   const query = { project: projectId, isActive: true };
   if (status) query.status = status;
-  
+
   return this.find(query)
     .populate('assignedTo', 'name email')
     .populate('project', 'name')
@@ -77,7 +82,7 @@ taskSchema.statics.getByProject = function(projectId, status = null) {
 taskSchema.statics.getUserTasks = function(userId, status = null) {
   const query = { assignedTo: userId, isActive: true };
   if (status) query.status = status;
-  
+
   return this.find(query)
     .populate('project', 'name client')
     .sort({ priority: -1, dueDate: 1 });
