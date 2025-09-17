@@ -19,6 +19,7 @@ const projectRoutes = require("./routes/projects");
 const leaveRoutes = require("./routes/leaveApplication");
 const timeEntryRoutes = require("./routes/timeEntry");
 const taskRoutes = require("./routes/tasks");
+const shiftRoutes = require("./routes/shifts");
 
 
 
@@ -43,6 +44,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/time-entries", timeEntryRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api/shifts", shiftRoutes);
 
 
 
