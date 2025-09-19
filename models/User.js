@@ -23,7 +23,7 @@ const UserSchema = new mongoose.Schema({
 
   // Optional teamMembers (if you keep it)
   teamMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: "TeamMember" }]
-});
+}, { timestamps: true });
 
 // Use the default collection name `users`
 module.exports = mongoose.model("User", UserSchema);
