@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const TimeEntry = require('../models/TimeEntry');
 const mongoose = require('mongoose');
+const TeamMember = require('../models/TeamMember');
 
 // =======================
 // Get active timer by user
@@ -114,6 +115,16 @@ router.post('/', async (req, res) => {
 
     const userModel = userType === 'TeamMember' ? 'TeamMember' : 'User';
 
+    // Enforce assigned shift for TeamMember
+    let trackingTypeToUse = trackingType || 'Hourly';
+    if (userModel === 'TeamMember') {
+      const member = await TeamMember.findById(userId).select('shift');
+      if (!member) {
+        return res.status(400).json({ success: false, error: 'Team member not found' });
+      }
+      trackingTypeToUse = member.shift;
+    }
+
     const timeEntry = new TimeEntry({
       userId,
       userModel,
@@ -123,7 +134,7 @@ router.post('/', async (req, res) => {
       startTime: new Date(startTime),
       endTime: endTime ? new Date(endTime) : null,
       billable: billable !== undefined ? billable : true,
-      trackingType: trackingType || 'Hourly',
+      trackingType: trackingTypeToUse,
       isManualEntry: isManualEntry || false,
       hourlyRate: hourlyRate || 0,
       status: endTime ? 'Completed' : 'In Progress'
@@ -160,7 +171,24 @@ router.post('/start', async (req, res) => {
       return res.status(400).json({ success: false, error: 'userId, project, task, and description are required' });
     }
 
+    // Validate ObjectIds to avoid internal cast errors
+    if (!mongoose.Types.ObjectId.isValid(userId) ||
+        !mongoose.Types.ObjectId.isValid(project) ||
+        !mongoose.Types.ObjectId.isValid(task)) {
+      return res.status(400).json({ success: false, error: 'Invalid userId, project, or task ID' });
+    }
+
     const userModel = userType === 'TeamMember' ? 'TeamMember' : 'User';
+
+    // Enforce assigned shift for TeamMember
+    let trackingTypeToUse = trackingType || 'Hourly';
+    if (userModel === 'TeamMember') {
+      const member = await TeamMember.findById(userId).select('shift');
+      if (!member) {
+        return res.status(400).json({ success: false, error: 'Team member not found' });
+      }
+      trackingTypeToUse = member.shift;
+    }
 
     // check if already active
     const activeTimer = await TimeEntry.findOne({ userId, userModel, status: 'In Progress' });
@@ -175,7 +203,7 @@ router.post('/start', async (req, res) => {
       task,
       description,
       startTime: new Date(),
-      trackingType: trackingType || 'Hourly',
+      trackingType: trackingTypeToUse,
       hourlyRate: hourlyRate || 0,
       status: 'In Progress'
     });
@@ -346,6 +374,16 @@ router.post('/manual', async (req, res) => {
 
     const userModel = userType === 'TeamMember' ? 'TeamMember' : 'User';
 
+    // Enforce assigned shift for TeamMember
+    let trackingTypeToUse = 'Hourly';
+    if (userModel === 'TeamMember') {
+      const member = await TeamMember.findById(userId).select('shift');
+      if (!member) {
+        return res.status(400).json({ success: false, error: 'Team member not found' });
+      }
+      trackingTypeToUse = member.shift;
+    }
+
     const timeEntry = new TimeEntry({
       userId,
       userModel,
@@ -355,7 +393,7 @@ router.post('/manual', async (req, res) => {
       startTime: new Date(startTime),
       endTime: new Date(endTime),
       billable: billable !== undefined ? billable : true,
-      trackingType: 'Hourly',
+      trackingType: trackingTypeToUse,
       isManualEntry: true,
       hourlyRate: hourlyRate || 0,
       status: 'Completed'
