@@ -7,30 +7,8 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const app = express();
-
-// CORS Configuration
-const corsOptions = {
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:4173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:4173",
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "user-role",
-    "User-Role",
-  ],
-};
-
 // Middleware
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json()); // Parses incoming JSON requests
 
 // Import Routes
@@ -43,21 +21,19 @@ const timeEntryRoutes = require("./routes/timeEntry");
 const taskRoutes = require("./routes/tasks");
 const shiftRoutes = require("./routes/shifts");
 
-// MongoDB Connection
-mongoose
-  .connect(process.env.MONGO_URI, {
-    // useNewUrlParser: true,
-    // useUnifiedTopology: true
-  })
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+
+// MongoDB Connection 
+mongoose.connect(process.env.MONGO_URI, {
+  // useNewUrlParser: true,
+  // useUnifiedTopology: true
+})
+.then(() => console.log("✅ MongoDB connected"))
+.catch(err => console.error("❌ MongoDB connection error:", err));
 
 // Test endpoint to verify backend is working
 app.get("/api/test", (req, res) => {
-  res.json({
-    message: "Backend is working",
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ message: "Backend is working", timestamp: new Date().toISOString() });
 });
 
 // Use Routes
@@ -69,6 +45,8 @@ app.use("/api/leave", leaveRoutes);
 app.use("/api/time-entries", timeEntryRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/shifts", shiftRoutes);
+
+
 
 // Root Route
 app.get("/", (req, res) => {
