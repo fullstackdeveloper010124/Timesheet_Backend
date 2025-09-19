@@ -134,7 +134,8 @@ router.post("/member/signup", async (req, res) => {
         phone: savedMember.phone,
         email: savedMember.email,
         project: savedMember.project,
-        role: savedMember.role
+        role: savedMember.role,
+        shift: savedMember.shift // Include shift information
       },
       token
     });
@@ -201,7 +202,8 @@ router.post("/login", async (req, res) => {
       phone: user.phone,
       email: user.email,
       project: user.project,
-      role: user.role
+      role: user.role,
+      shift: user.shift // Include shift information for TeamMembers
     };
 
     res.status(200).json({
@@ -213,6 +215,57 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Server error during login", details: err.message });
+  }
+});
+
+// ============================
+// ✅ Get User Details by ID
+// ============================
+router.get("/user/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Try to find as User first
+    let user = await User.findById(id);
+    let userType = "User";
+
+    // If not found as User, try as TeamMember
+    if (!user) {
+      user = await TeamMember.findById(id);
+      userType = "TeamMember";
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Prepare response based on user type
+    const userData = userType === "User" ? {
+      id: user._id,
+      fullName: user.fullName,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      userType: "User"
+    } : {
+      id: user._id,
+      employeeId: user.employeeId,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      project: user.project,
+      role: user.role,
+      shift: user.shift,
+      userType: "TeamMember"
+    };
+
+    res.status(200).json({
+      success: true,
+      data: userData
+    });
+  } catch (err) {
+    console.error("Get user error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
